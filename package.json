@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+      "clean": "wsrun -mc clean",
+      "typecheck": "wsrun -mc typecheck",
+      "lint": "wsrun -mc lint",
+      "test": "wsrun -mc test",
+      "build": "wsrun -tc build"
+  },
+  "devDependencies": {
+    "wsrun": "5.2.4"
+  }
+}
