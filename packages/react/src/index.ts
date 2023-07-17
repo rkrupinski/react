@@ -363,10 +363,10 @@ const _updateDom = (
       case 'className':
         el.className = props[p];
         break;
-      case 'value': {
-        (el as any).value = props[p];
+      case 'value':
+      case 'checked':
+        (el as any)[p] = props[p];
         break;
-      }
       default:
         el.setAttribute(p, props[p]);
         break;
