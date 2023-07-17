@@ -359,7 +359,18 @@ const _updateDom = (
   });
 
   added.props.forEach(p => {
-    el.setAttribute(p === 'className' ? 'class' : p, props[p]);
+    switch (p) {
+      case 'className':
+        el.className = props[p];
+        break;
+      case 'value': {
+        (el as any).value = props[p];
+        break;
+      }
+      default:
+        el.setAttribute(p, props[p]);
+        break;
+    }
   });
 
   added.handlers.forEach(h => {
