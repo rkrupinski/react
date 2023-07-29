@@ -63,7 +63,7 @@ describe('@rkrupinski/react', () => {
   beforeEach(() => {
     _doNotTouchOrYouWillBeFired.setScheduler(fn => {
       fn({
-        timeRemaining: () => 100,
+        timeRemaining: () => 1,
         didTimeout: false,
       });
       return 1;

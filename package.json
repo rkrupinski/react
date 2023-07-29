@@ -4,11 +4,12 @@
     "packages/*"
   ],
   "scripts": {
-      "clean": "wsrun -mc clean",
-      "typecheck": "wsrun -mc typecheck",
-      "lint": "wsrun -mc lint",
-      "test": "wsrun -mc test",
-      "build": "wsrun -tc build"
+    "clean": "wsrun -mc clean",
+    "typecheck": "wsrun -mc typecheck",
+    "lint": "wsrun -mc lint",
+    "test": "wsrun -mc test",
+    "start": "wsrun -mc start",
+    "build": "wsrun -tc build"
   },
   "devDependencies": {
     "wsrun": "5.2.4"

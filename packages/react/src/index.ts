@@ -18,6 +18,7 @@ type SetterOrUpdater<T> = (arg: T | ((prev: T) => T)) => void;
 
 type StateHook<T = any> = {
   type: 'state';
+  pending: Array<Parameters<SetterOrUpdater<T>>[0]>;
   value: T;
   dispatch: SetterOrUpdater<T>;
 };
@@ -75,13 +76,12 @@ type Fiber = {
   alternate: Fiber | null;
 };
 
-let scheduler: typeof requestIdleCallback =
-  window.requestIdleCallback || (() => {});
-
 const VOID = Symbol('VOID');
 const ROOT = Symbol('ROOT');
 const TEXT = Symbol('TEXT');
 const FRAGMENT = Symbol('FRAGMENT');
+
+let scheduler = window.requestIdleCallback;
 
 let _nextUnitOfWork: Fiber | null;
 let _currentRoot: Fiber | null = null;
@@ -89,6 +89,15 @@ let _wipRoot: Fiber | null = null;
 let _firstEffect: Fiber | null = null;
 let _lastEffect: Fiber | null = null;
 let _hookIndex = -1;
+
+const _isStateHook = <T>(hook: Hook): hook is StateHook<T> =>
+  hook.type === 'state';
+
+const _isMemoHook = <T>(hook: Hook): hook is MemoHook<T> =>
+  hook.type === 'memo';
+
+const _isEffectHook = (hook: Hook): hook is EffectHook =>
+  hook.type === 'effect';
 
 const _scheduleEffect = (fiber: Fiber) => {
   if (!_lastEffect) {
@@ -117,14 +126,8 @@ const _depsEqual = <T>(a: T[] = [], b: T[] = []) => {
   return a.every((val, i) => val === b[i]);
 };
 
-const _runEffects = (fiber: Fiber) => {
-  fiber.hooks.forEach(hook => {
-    if (hook.type === 'effect' && hook.depsChanged) {
-      hook.cleanup?.();
-      hook.cleanup = hook.setup() ?? undefined;
-    }
-  });
-};
+const _getEffects = (fiber: Fiber) =>
+  fiber.hooks.filter(_isEffectHook).filter(({ depsChanged }) => depsChanged);
 
 const _runCleanup = (fiber: Fiber) => {
   fiber.hooks.forEach(hook => {
@@ -266,21 +269,17 @@ const _getSiblingDom = (fiber: Fiber): Fiber['dom'] => {
   return null;
 };
 
-const _reorderChildren = (f: Fiber, key: Fiber['key']) => {
-  let prev = f;
-  let curr = f.sibling;
+const _reorderSiblings = (fiber: Fiber, start: Fiber) => {
+  let curr: Fiber | null = fiber;
 
-  while (curr && curr.key !== key) {
-    prev = curr;
+  while (curr?.sibling) {
+    if (curr.sibling.key === start.key) curr.sibling = curr.sibling.sibling;
     curr = curr.sibling;
   }
 
-  const tmp = curr?.sibling ?? null;
+  start.sibling = fiber;
 
-  if (curr) curr.sibling = f;
-  prev.sibling = tmp;
-
-  return curr;
+  return start;
 };
 
 const _createDom = (fiber: Fiber) => {
@@ -366,7 +365,7 @@ const _updateDom = (
       case 'value':
       case 'checked':
         (el as any)[p] = props[p];
-        break;
+      // eslint-disable-next-line no-fallthrough
       default:
         el.setAttribute(p, props[p]);
         break;
@@ -392,15 +391,12 @@ const _beginWork = (fiber: Fiber) => {
     let keyMismatch = false;
 
     if (fiber.key !== null && fiber.key !== fiber.alternate.key) {
-      const { children: altChildren = [] } =
-        fiber.return?.alternate?.props ?? {};
+      let alt: Fiber | null = fiber.alternate;
 
-      const altIndex = altChildren.findIndex(
-        c => _isElement(c) && c.key === fiber.key,
-      );
+      while (alt && alt.key !== fiber.key) alt = alt.sibling;
 
-      if (altIndex !== -1) {
-        fiber.alternate = _reorderChildren(fiber.alternate, fiber.key) as Fiber;
+      if (alt) {
+        fiber.alternate = _reorderSiblings(fiber.alternate, alt);
         fiber.hooks = fiber.alternate.hooks;
         fiber.dom = fiber.alternate.dom;
       } else {
@@ -428,7 +424,7 @@ const _beginWork = (fiber: Fiber) => {
   switch (fiber.tag) {
     case 'functionComponent':
       _updateFunctionComponent(fiber);
-      if (!fiber.effectTag) _runEffects(fiber);
+      if (!fiber.effectTag && fiber.hooks.length) _scheduleEffect(fiber);
       break;
     case 'hostText':
     case 'hostComponent':
@@ -462,11 +458,12 @@ const _beginWork = (fiber: Fiber) => {
     return childFiber;
   }
 
-  const altChild = fiber.alternate?.child;
+  let altChild = fiber.alternate?.child;
 
-  if (altChild) {
+  while (altChild) {
     altChild.effectTag = 'remove';
     _scheduleEffect(altChild);
+    altChild = altChild.sibling;
   }
 
   return null;
@@ -512,36 +509,38 @@ const _performUnitOfWork = (fiber: Fiber) =>
   _beginWork(fiber) ?? _completeWork(fiber);
 
 const _commitWork = (effectFiber: Fiber | null) => {
+  const effects: EffectHook[] = [];
   let curr = effectFiber;
 
   while (curr) {
     switch (curr.effectTag) {
-      case 'add': {
+      case 'add':
         if (curr.dom instanceof HTMLElement)
           _updateDom(curr.dom, {}, curr.props);
 
         if (curr.dom)
           _getParentDom(curr).insertBefore(curr.dom, _getSiblingDom(curr));
 
-        _runEffects(curr);
+        effects.push(..._getEffects(curr));
         break;
-      }
 
-      case 'update': {
+      case 'update':
         if (curr.dom instanceof Text) {
           curr.dom.nodeValue = (curr.props as TextProps).nodeValue;
         } else if (curr.dom instanceof HTMLElement) {
           _updateDom(curr.dom, curr.alternate?.props ?? {}, curr.props);
         }
 
-        _runEffects(curr);
+        effects.push(..._getEffects(curr));
         break;
-      }
 
-      case 'remove': {
+      case 'remove':
         _removeDom(curr, _getParentDom(curr));
         break;
-      }
+
+      default:
+        effects.push(..._getEffects(curr));
+        break;
     }
 
     const tmp = curr;
@@ -549,13 +548,18 @@ const _commitWork = (effectFiber: Fiber | null) => {
     tmp.effectTag = null;
     tmp.nextEffect = null;
   }
+
+  effects.forEach(effect => {
+    effect.cleanup?.();
+    effect.cleanup = effect.setup() ?? undefined;
+  });
 };
 
 const _workLoop = (deadline: IdleDeadline) => {
   if (!_nextUnitOfWork && _wipRoot) {
-    _commitWork(_firstEffect);
     _currentRoot = _wipRoot;
     _wipRoot = null;
+    _commitWork(_firstEffect);
     return;
   }
 
@@ -576,9 +580,10 @@ const useState = <T>(initialValue: T | (() => T)): [T, SetterOrUpdater<T>] => {
   if (!fiber.hooks[_hookIndex])
     fiber.hooks[_hookIndex] = {
       type: 'state',
+      pending: [],
       value: initialValue instanceof Function ? initialValue() : initialValue,
       dispatch: (arg: Parameters<SetterOrUpdater<T>>[0]) => {
-        hook.value = arg instanceof Function ? arg(hook.value) : arg;
+        (hook as StateHook<T>).pending.push(arg);
 
         _wipRoot = _createFiber({
           ..._currentRoot,
@@ -598,9 +603,16 @@ const useState = <T>(initialValue: T | (() => T)): [T, SetterOrUpdater<T>] => {
       },
     };
 
-  const hook = fiber.hooks[_hookIndex] as StateHook<T>;
+  const hook = fiber.hooks[_hookIndex];
 
-  if (hook.type !== 'state') throw new Error('WAT');
+  if (!_isStateHook<T>(hook)) throw new Error('WAT');
+
+  hook.value = hook.pending.reduce<T>(
+    (acc, curr) => (curr instanceof Function ? curr(acc) : curr),
+    hook.value,
+  );
+
+  hook.pending = [];
 
   return [hook.value, hook.dispatch];
 };
@@ -620,9 +632,9 @@ const useMemo = <T>(makeValue: () => T, deps: any[]) => {
     };
   }
 
-  const hook = fiber.hooks[_hookIndex] as MemoHook<T>;
+  const hook = fiber.hooks[_hookIndex];
 
-  if (hook.type !== 'memo') throw new Error('WAT');
+  if (!_isMemoHook<T>(hook)) throw new Error('WAT');
 
   if (!_depsEqual(hook.deps, deps)) {
     hook.value = makeValue();
@@ -658,9 +670,9 @@ const useEffect = (
     return;
   }
 
-  const hook = fiber.hooks[_hookIndex] as EffectHook;
+  const hook = fiber.hooks[_hookIndex];
 
-  if (hook.type !== 'effect') throw new Error('WAT');
+  if (!_isEffectHook(hook)) throw new Error('WAT');
 
   hook.depsChanged = !deps || !_depsEqual(hook.deps, deps);
   hook.deps = deps;
