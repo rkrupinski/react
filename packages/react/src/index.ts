@@ -364,7 +364,6 @@ const _updateDom = (
         break;
       case 'value':
       case 'checked':
-      case 'autofocus':
         (el as any)[p] = props[p];
       // eslint-disable-next-line no-fallthrough
       default:
