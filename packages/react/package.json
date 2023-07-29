@@ -1,7 +1,7 @@
 {
   "name": "@rkrupinski/react",
-  "description": "A lightweight React alternative",
-  "version": "0.0.1",
+  "description": "An experimental, lightweight React alternative.",
+  "version": "0.0.1-rc1",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",

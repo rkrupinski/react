@@ -1,0 +1,18 @@
+{
+  "name": "example",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "start": "parcel src/index.html --open",
+    "build": "parcel build src/index.html"
+  },
+  "dependencies": {
+    "@rkrupinski/react": "*",
+    "todomvc-app-css": "2.4.2"
+  },
+  "devDependencies": {
+    "@rkrupinski/prettierconfig": "1.0.1",
+    "parcel": "2.9.3"
+  }
+}
