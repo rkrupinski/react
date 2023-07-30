@@ -5,6 +5,7 @@ An experimental, lightweight [React](https://react.dev/) alternative.
 Table of contents:
 
 - [Getting started](#getting-started)
+- [Example](#example)
 
 ## Getting started
 
@@ -64,3 +65,8 @@ const root = document.querySelector("#root") as HTMLElement;
 
 render(<App />, root);
 ```
+
+## Example
+
+- [Live](https://remarkable-rugelach-93aab7.netlify.app/)
+- [Source code](https://github.com/rkrupinski/react/tree/master/packages/example)
