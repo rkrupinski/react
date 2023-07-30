@@ -723,6 +723,7 @@ export {
   useCallback,
   useEffect,
   FRAGMENT as Fragment,
+  type Node,
   type FunctionComponent,
   type FunctionComponent as FC,
 };
