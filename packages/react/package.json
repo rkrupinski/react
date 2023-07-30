@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*\"",
     "test": "jest",
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "yarn build"
   },
   "devDependencies": {
     "@rkrupinski/prettierconfig": "1.0.1",

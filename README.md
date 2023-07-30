@@ -2,6 +2,9 @@
 
 An experimental, lightweight [React](https://react.dev/) alternative.
 
+![Build status](https://github.com/rkrupinski/react/workflows/CI/badge.svg)
+[![minified + gzip](https://badgen.net/bundlephobia/minzip/@rkrupinski/react)](https://bundlephobia.com/package/@rkrupinski/react)
+
 Table of contents:
 
 - [Getting started](#getting-started)
