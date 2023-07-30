@@ -2,6 +2,8 @@
 
 An experimental, lightweight [React](https://react.dev/) alternative.
 
+Table of contents:
+
 - [Getting started](#getting-started)
 - [Example](#example)
 

@@ -81,7 +81,13 @@ const ROOT = Symbol('ROOT');
 const TEXT = Symbol('TEXT');
 const FRAGMENT = Symbol('FRAGMENT');
 
-let scheduler = window.requestIdleCallback;
+let scheduler: typeof requestIdleCallback =
+  window.requestIdleCallback ??
+  (cb => {
+    // eslint-disable-next-line n/no-callback-literal
+    cb({ timeRemaining: () => 1, didTimeout: false });
+    return 1;
+  });
 
 let _nextUnitOfWork: Fiber | null;
 let _currentRoot: Fiber | null = null;
