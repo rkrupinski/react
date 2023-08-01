@@ -1,3 +1,5 @@
+<img src="https://github.com/rkrupinski/react/assets/775177/29935515-8c29-4254-b80e-ed590489738d" width="250" height="250" />
+
 # @rkrupinski/react
 
 An experimental, lightweight [React](https://react.dev/) alternative.
